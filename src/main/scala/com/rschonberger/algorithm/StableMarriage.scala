@@ -2,6 +2,7 @@ package com.rschonberger.algorithm
 
 import collection.immutable.{HashSet, HashMap}
 import annotation.tailrec
+import collection.mutable
 
 object StableMarriage {
   val x: String = "Cheese"
@@ -26,7 +27,7 @@ object StableMarriage {
         // We are definitely proposing.
         val (woman, newScore) = chosenWoman.get
         val newProposal = (freeMan, woman)
-        val proposals: Set[(A, B)] =  previousProposals + newProposal
+        val proposals: Set[(A, B)] = previousProposals + newProposal
         val currentChosenMan = currentMarriages.get(woman)
         currentChosenMan match {
           case None => {
@@ -59,4 +60,15 @@ object StableMarriage {
     HashMap.empty
     findMarriages(freeMen, freeWomen, previousProposals, currentMarriages, scoreFunction)
   }
+}
+
+class StableMarriage[A, B, C <% Ordered[C]] protected(men: Iterable[A], women: Iterable[B], scoreFunction: (A, B) => C) {
+  type scoreType = (C, B)
+
+  class TupleOrdering extends Ordering[scoreType] {
+    def compare(a: scoreType, b: scoreType) = a._1 compare b._1
+  }
+
+  val priorityFunc = new TupleOrdering
+  val proposalCache: Map[A, mutable.PriorityQueue[(C, B)]] = HashMap.empty ++ (men map (man => new mutable.PriorityQueue()(priorityFunc)))
 }

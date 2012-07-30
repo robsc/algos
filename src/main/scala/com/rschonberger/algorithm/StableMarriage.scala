@@ -7,7 +7,31 @@ import collection.mutable
 object StableMarriage {
   val x: String = "Cheese"
 
-  @tailrec def findMarriages[A, B, C <% Ordered[C]](men: Seq[A], women: Set[B], previousProposals: Set[(A, B)], currentMarriages: Map[B, A], scoreFunction: (A, B) => C): Map[B, A] = {
+  def finalMarriages[A, B, C <% Ordered[C]](men: Iterable[A], women: Iterable[B], scoreFunction: (A, B) => C): Map[B, A] = {
+    val marriage = new StableMarriage(men, women, scoreFunction)
+    marriage.finalMarriages
+  }
+}
+
+class StableMarriage[A, B, C <% Ordered[C]] protected(men: Iterable[A], women: Iterable[B], val scoreFunction: (A, B) => C) {
+  type scoreType = (C, B)
+
+  implicit object TupleOrdering extends Ordering[scoreType] {
+    def compare(a: scoreType, b: scoreType) = a._1 compare b._1
+  }
+
+  val proposalCache: Map[A, mutable.PriorityQueue[scoreType]] = HashMap.empty ++ (men map (man => man -> new mutable.PriorityQueue[scoreType]()))
+
+  lazy val finalMarriages: Map[B, A] = {
+    val freeMen = List.empty ++ men
+    val freeWomen = HashSet.empty ++ women
+    val previousProposals: Set[(A, B)] = HashSet.empty
+    val currentMarriages: Map[B, A] = HashMap.empty
+    findMarriages(freeMen, freeWomen, previousProposals, currentMarriages)
+  }
+
+
+  @tailrec final def findMarriages(men: Seq[A], women: Set[B], previousProposals: Set[(A, B)], currentMarriages: Map[B, A]): Map[B, A] = {
     men match {
       case Seq(freeMan: A, tailMen@_*) => {
         // Pick a woman to propose to
@@ -32,16 +56,16 @@ object StableMarriage {
         currentChosenMan match {
           case None => {
             val marriages: Map[B, A] = currentMarriages + (woman -> freeMan)
-            findMarriages(tailMen, women, proposals, marriages, scoreFunction)
+            findMarriages(tailMen, women, proposals, marriages)
           }
           case Some(man) => {
             val currentScore = scoreFunction(man, woman)
             if (currentScore < newScore) {
               // Choose a new man
               val marriages = currentMarriages + (woman -> freeMan)
-              findMarriages(man +: tailMen, women, proposals, marriages, scoreFunction)
+              findMarriages(man +: tailMen, women, proposals, marriages)
             } else {
-              findMarriages(men, women, proposals, currentMarriages, scoreFunction)
+              findMarriages(men, women, proposals, currentMarriages)
             }
           }
           case _ => throw new RuntimeException("What the hell?")
@@ -50,25 +74,4 @@ object StableMarriage {
       case _ => currentMarriages
     }
   }
-
-
-  def finalMarriages[A, B, C <% Ordered[C]](men: Iterable[A], women: Iterable[B], scoreFunction: (A, B) => C): Map[B, A] = {
-    val freeMen = List.empty ++ men
-    val freeWomen = HashSet.empty ++ women
-    val previousProposals: Set[(A, B)] = HashSet.empty
-    val currentMarriages: Map[B, A] = HashMap.empty
-    HashMap.empty
-    findMarriages(freeMen, freeWomen, previousProposals, currentMarriages, scoreFunction)
-  }
-}
-
-class StableMarriage[A, B, C <% Ordered[C]] protected(men: Iterable[A], women: Iterable[B], scoreFunction: (A, B) => C) {
-  type scoreType = (C, B)
-
-  class TupleOrdering extends Ordering[scoreType] {
-    def compare(a: scoreType, b: scoreType) = a._1 compare b._1
-  }
-
-  val priorityFunc = new TupleOrdering
-  val proposalCache: Map[A, mutable.PriorityQueue[(C, B)]] = HashMap.empty ++ (men map (man => new mutable.PriorityQueue()(priorityFunc)))
 }

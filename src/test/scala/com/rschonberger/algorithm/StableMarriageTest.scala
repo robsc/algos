@@ -4,10 +4,6 @@ import org.scalatest._
 import collection.immutable.HashSet
 
 class StableMarriageSuite extends FunSuite {
-  test("The x is cheese") {
-    expect("Cheese")(StableMarriage.x)
-  }
-
   test("Two Person Example") {
     val men: Seq[String] = "a" :: "b" :: List.empty
     val women: Set[Int] = HashSet.empty + 1 + 2

@@ -3,6 +3,7 @@ package com.rschonberger.algorithm
 import collection.immutable.{HashSet, HashMap}
 import annotation.tailrec
 import collection.mutable
+import java.util.NoSuchElementException
 
 object StableMarriage {
   val x: String = "Cheese"
@@ -20,20 +21,66 @@ class StableMarriage[A, B, C <% Ordered[C]] protected(men: Iterable[A], women: I
     def compare(a: scoreType, b: scoreType) = a._1 compare b._1
   }
 
-  val proposalCache: Map[A, mutable.PriorityQueue[scoreType]] = HashMap.empty ++ (men map (man => man -> new mutable.PriorityQueue[scoreType]()))
+  lazy val proposalCache: Map[A, mutable.PriorityQueue[scoreType]] = HashMap.empty ++ (men map (man => man -> new mutable.PriorityQueue[scoreType]()))
 
   lazy val finalMarriages: Map[B, A] = {
     val freeMen = List.empty ++ men
     val previousProposals: Set[(A, B)] = HashSet.empty
     val currentMarriages: Map[B, A] = HashMap.empty
-    findMarriages(freeMen, previousProposals, currentMarriages)
+    if (men.size < 100) {
+      findMarriages(freeMen, currentMarriages)
+    } else {
+      findMarriages(freeMen, previousProposals, currentMarriages)
+    }
   }
 
+  def getProposalQueue(man: A): mutable.PriorityQueue[scoreType] = {
+    proposalCache.get(man) match {
+      case None => throw new NoSuchElementException("Unknown man")
+      case Some(queue) if queue.nonEmpty => queue
+      case Some(queue) => {
+        queue ++= women map (woman => (scoreFunction(man, woman), woman))
+      }
+    }
+  }
+
+  @tailrec final def findMarriages(men: Seq[A], currentMarriages: Map[B, A]): Map[B, A] = {
+    men match {
+      case Seq(freeMan: A, tailMen@_*) => {
+        // Pick a woman to propose to
+        val womanQueue = getProposalQueue(freeMan)
+
+        val (newScore, woman) = womanQueue.dequeue
+
+        val currentChosenMan = currentMarriages.get(woman)
+        currentChosenMan match {
+          case None => {
+            val marriages: Map[B, A] = currentMarriages + (woman -> freeMan)
+            findMarriages(tailMen, marriages)
+          }
+          case Some(man) => {
+            val currentScore = scoreFunction(man, woman)
+            if (currentScore < newScore) {
+              // Choose a new man
+              val marriages = currentMarriages + (woman -> freeMan)
+              findMarriages(man +: tailMen, marriages)
+            } else {
+              findMarriages(men, currentMarriages)
+            }
+          }
+          case _ => throw new RuntimeException("What the hell?")
+        }
+      }
+      case _ => currentMarriages
+    }
+  }
 
   @tailrec final def findMarriages(men: Seq[A], previousProposals: Set[(A, B)], currentMarriages: Map[B, A]): Map[B, A] = {
     men match {
       case Seq(freeMan: A, tailMen@_*) => {
         // Pick a woman to propose to
+        val womanQueue = getProposalQueue(freeMan)
+
         var chosenWoman: Option[(B, C)] = None
         for (woman <- women if !previousProposals.contains((freeMan, woman))) {
           val score = scoreFunction(freeMan, woman)

@@ -24,14 +24,13 @@ class StableMarriage[A, B, C <% Ordered[C]] protected(men: Iterable[A], women: I
 
   lazy val finalMarriages: Map[B, A] = {
     val freeMen = List.empty ++ men
-    val freeWomen = HashSet.empty ++ women
     val previousProposals: Set[(A, B)] = HashSet.empty
     val currentMarriages: Map[B, A] = HashMap.empty
-    findMarriages(freeMen, freeWomen, previousProposals, currentMarriages)
+    findMarriages(freeMen, previousProposals, currentMarriages)
   }
 
 
-  @tailrec final def findMarriages(men: Seq[A], women: Set[B], previousProposals: Set[(A, B)], currentMarriages: Map[B, A]): Map[B, A] = {
+  @tailrec final def findMarriages(men: Seq[A], previousProposals: Set[(A, B)], currentMarriages: Map[B, A]): Map[B, A] = {
     men match {
       case Seq(freeMan: A, tailMen@_*) => {
         // Pick a woman to propose to
@@ -56,16 +55,16 @@ class StableMarriage[A, B, C <% Ordered[C]] protected(men: Iterable[A], women: I
         currentChosenMan match {
           case None => {
             val marriages: Map[B, A] = currentMarriages + (woman -> freeMan)
-            findMarriages(tailMen, women, proposals, marriages)
+            findMarriages(tailMen, proposals, marriages)
           }
           case Some(man) => {
             val currentScore = scoreFunction(man, woman)
             if (currentScore < newScore) {
               // Choose a new man
               val marriages = currentMarriages + (woman -> freeMan)
-              findMarriages(man +: tailMen, women, proposals, marriages)
+              findMarriages(man +: tailMen, proposals, marriages)
             } else {
-              findMarriages(men, women, proposals, currentMarriages)
+              findMarriages(men, proposals, currentMarriages)
             }
           }
           case _ => throw new RuntimeException("What the hell?")

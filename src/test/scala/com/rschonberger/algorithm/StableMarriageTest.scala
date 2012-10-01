@@ -15,7 +15,7 @@ class StableMarriageSuite extends FunSuite {
         case _ => 1
       }
     }
-    val actualResult = StableMarriage.finalMarriages(men, women, score)
+    val actualResult = StableMarriage.finalMarriages(men, women toSeq, score)
     expect(expectedResult)(actualResult)
   }
 
@@ -25,7 +25,7 @@ class StableMarriageSuite extends FunSuite {
     val women: Set[Int] = HashSet.empty + 1
     val expectedResult = Map.empty + (1 -> "a")
     val score = (a: String, b: Int) => 1
-    val actualResult = StableMarriage.finalMarriages(men, women, score)
+    val actualResult = StableMarriage.finalMarriages(men, women toSeq, score)
     expect(expectedResult)(actualResult)
   }
 }

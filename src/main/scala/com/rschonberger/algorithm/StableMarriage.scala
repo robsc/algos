@@ -6,25 +6,23 @@ import collection.mutable
 import java.util.NoSuchElementException
 
 object StableMarriage {
-  val x: String = "Cheese"
-
-  def finalMarriages[A, B, C <% Ordered[C]](men: Iterable[A], women: Iterable[B], scoreFunction: (A, B) => C): Map[B, A] = {
+  def finalMarriages[A, B, C <% Ordered[C]](men: Seq[A], women: Seq[B], scoreFunction: (A, B) => C): Map[B, A] = {
     val marriage = new StableMarriage(men, women, scoreFunction)
     marriage.finalMarriages
   }
 }
 
-class StableMarriage[A, B, C <% Ordered[C]] protected(men: Iterable[A], women: Iterable[B], val scoreFunction: (A, B) => C) {
-  type scoreType = (C, B)
+class StableMarriage[A, B, C <% Ordered[C]] protected(men: Seq[A], women: Seq[B], val scoreFunction: (A, B) => C) {
+  type ScoreType = (C, B)
 
-  implicit object TupleOrdering extends Ordering[scoreType] {
-    def compare(a: scoreType, b: scoreType) = a._1 compare b._1
+  private implicit object TupleOrdering extends Ordering[ScoreType] {
+    def compare(a: ScoreType, b: ScoreType) = a._1 compare b._1
   }
 
-  lazy val proposalCache: Map[A, mutable.PriorityQueue[scoreType]] = HashMap.empty ++ (men map (man => man -> new mutable.PriorityQueue[scoreType]()))
-
+  lazy val proposalCache: Map[A, mutable.PriorityQueue[ScoreType]] = men map (man => man -> new mutable.PriorityQueue[ScoreType]) toMap
+  
   lazy val finalMarriages: Map[B, A] = {
-    val freeMen = List.empty ++ men
+    val freeMen: Seq[A] = men
     val previousProposals: Set[(A, B)] = HashSet.empty
     val currentMarriages: Map[B, A] = HashMap.empty
     if (men.size < 100) {
@@ -34,7 +32,7 @@ class StableMarriage[A, B, C <% Ordered[C]] protected(men: Iterable[A], women: I
     }
   }
 
-  def getProposalQueue(man: A): mutable.PriorityQueue[scoreType] = {
+  def getProposalQueue(man: A): mutable.PriorityQueue[ScoreType] = {
     proposalCache.get(man) match {
       case None => throw new NoSuchElementException("Unknown man")
       case Some(queue) if queue.nonEmpty => queue
